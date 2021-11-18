@@ -47,3 +47,37 @@ def getFilesByPath(path: str, formats: List[str], includeKeys: List[str], ignore
             if not isIgnore or len(includeKeys) == 0:
                 allfiles.append(os.path.join(root, f))
     return allfiles
+
+
+def getPrefixName(filename: str) -> str:
+    """
+    getPrefixName 找到文件（路径）的文件前缀名（不包含后缀名）
+
+    Args:
+        filename (str): 文件名或文件路径
+
+    Returns:
+        str: 文件前缀名
+    """
+    try:
+        name = filename.split('/')[-1]
+        return name.split('.')[0]
+    except Exception:
+        return ""
+
+
+def getSuffixName(filename: str) -> str:
+    """
+    getSuffix 获取文件的后缀名
+
+    Args:
+        filename (str): 文件名
+
+    Returns:
+        str: 后缀名
+    """
+    try:
+        name = filename.split('.')[-1]
+        return name
+    except Exception:
+        return ""

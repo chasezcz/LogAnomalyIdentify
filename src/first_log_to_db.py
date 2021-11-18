@@ -5,26 +5,21 @@
 @Contact :   929160190@qq.com
 '''
 
+import datetime
 # 第一步，将日志文件进行初步处理，存储到数据库中
 import logging as log
 import os
 import sys
 import time
-import datetime
 
 from modules.log_entry import extractLogEntry
+from sql.db import DB as db
+from sql.db import ORIGIN_TABLE_LABELS, ORIGIN_TABLE_NAMES
 from utils.file_utils import getFilesByPath
-from sql.db import DB as db, ORIGIN_TABLE_LABELS
-
-log.basicConfig(
-    format='[%(asctime)s][%(levelname)s]: %(message)s',
-    level=log.INFO,
-    filename='first_log_to_db.log',
-    filemode='w',
-)
-
+from utils.logger import logInit
 
 if __name__ == '__main__':
+    logInit(__file__, log.INFO)
     files = getFilesByPath(
         '/home/chase/Workspace/origindata/', 'log', [], ['api', 'token'])
 
@@ -46,7 +41,7 @@ if __name__ == '__main__':
                      (successCount+failCount, successCount, failCount))
             allSuccess, allFail = allSuccess + successCount, allFail + failCount
             try:
-                db.insertOrigin(values)
+                db.insert(ORIGIN_TABLE_NAMES[0], ORIGIN_TABLE_LABELS, values)
             except Exception as e:
                 log.error(e)
 

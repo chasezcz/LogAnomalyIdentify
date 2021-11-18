@@ -28,6 +28,14 @@ ORIGIN_TABLE_LABELS = [
     "vpnIP"
 ]
 
+ORIGIN_TABLE_NAMES = [
+    "origin",
+    "origin_2020_head",
+    "origin_2020_tail",
+    "origin_2021_head",
+    "origin_2021_tail"
+]
+
 
 class Database():
     """
@@ -60,10 +68,12 @@ class Database():
     def __generateQuerySQL(self, table: str, columns: List[str]) -> str:
         return "SELECT %s FROM %s" % (','.join(columns), table)
 
-    def query(self, table: str, columns: List[str]):
-        sql = self.__generateQuerySQL(table, columns)
-        self.__cursor.execute(sql)
-        return self.__cursor.fetchall()
+    def __generateQuerySQLWithDistinct(self, table: str, columns: List[str], distinct: List[str]) -> str:
+        return "SELECT %s distinct(%s) FROM %s" % (
+            ','.join(columns),
+            ','.join(distinct),
+            table
+        )
 
     def insert(self, table: str, columns: List[str], values: List[Tuple]):
         """
@@ -80,7 +90,7 @@ class Database():
         self.__cursor.executemany(sql, values)
         self.__conn.commit()
 
-    def insertOrigin(self, values: List[Tuple]):
+    def insertOriginByDate(self, values: List[Tuple]):
         """
         insert 向数据库中插入多条数据
 
@@ -96,6 +106,40 @@ class Database():
         table = 'origin_%d_%s' % (dt.year, 'head' if dt.month < 7 else 'tail')
         # print(table)
         self.insert(table, ORIGIN_TABLE_LABELS, values)
+
+    def query(self, table: str, columns: List[str]) -> List:
+        """
+        query 不加任何限制的查询数据
+
+        Args:
+            table (str): 打算查询的表名
+            columns (List[str]): 打算查询的字段
+
+        Returns:
+            List: 查询得到的结果
+        """
+        if (len(columns) == 0):
+            return []
+        sql = self.__generateQuerySQL(table, columns)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
+
+    def queryDistinct(self, table: str, columns: List[str], distinct: List[str]) -> List:
+        """
+        query 不加任何限制的查询数据
+
+        Args:
+            table (str): 打算查询的表名
+            columns (List[str]): 打算查询的字段
+
+        Returns:
+            List: 查询得到的结果
+        """
+        if (len(columns) == 0 and len(distinct) == 0):
+            return []
+        sql = self.__generateQuerySQLWithDistinct(table, columns, distinct)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
 
 
 DB = Database()
