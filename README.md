@@ -1,3 +1,3 @@
-# OpeartionRecommender
+# LogAnomalyIdentify
 
-基于用户行为序列的异常预警
+基于日志的异常分析检测
