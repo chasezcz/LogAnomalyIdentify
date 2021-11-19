@@ -82,6 +82,24 @@ class Database():
             table
         )
 
+    def __generateQuerySQLWithRange(self, table: str, columns: List[str], rangeLabel: str, start: str, end: str) -> str:
+        return "SELECT %s FROM %s WHERE %s>='%s' and %s <= '%s'" % (
+            ','.join(columns),
+            table,
+            rangeLabel,
+            start,
+            rangeLabel,
+            end
+        )
+
+    def __generateQuerySQLWithEqual(self, table: str, columns: List[str], equalLable: str, target: str) -> str:
+        return "SELECT %s FROM %s WHERE %s = '%s'" % (
+            ','.join(columns),
+            table,
+            equalLable,
+            target
+        )
+
     def insert(self, table: str, columns: List[str], values: List[Tuple]):
         """
         insert 向数据库中插入多条数据
@@ -149,6 +167,46 @@ class Database():
         self.__cursor.execute(sql)
         return self.__cursor.fetchall()
 
+    def queryOriginWithRange(self, columns: List[str], rangeLabel: str, start: str, end: str) -> List:
+        """
+        queryOriginWithRange 在 origin 表中获取日志，其中包含columns中所需要的字段，同时应符合 start 和 end 之间的要求
+
+        Args:
+            columns (List[str]): 要求的日志字段名
+            rangeLabel (str): range 的字段
+            start (str): 日志开始边界
+            end (str): 日志结束边界
+
+        Returns:
+            List: 日志的数据
+        """
+        if (len(columns) == 0):
+            return []
+        sql = self.__generateQuerySQLWithRange(
+            ORIGIN_TABLE_NAME, columns, rangeLabel, start, end)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
+
+    def queryOriginWithEqual(self, columns: List[str], equalLabel: str, target: str) -> List:
+        """
+        queryOriginWithRange 在 origin 表中获取日志，其中包含columns中所需要的字段，同时应符合 equalLabel == target 的要求
+
+        Args:
+            columns (List[str]): 要求的日志字段名
+            equalLabel (str): 进行约束的字段
+            target (str): lable 的目标值
+
+        Returns:
+            List: 日志的数据
+        """
+        if (len(columns) == 0):
+            return []
+        sql = self.__generateQuerySQLWithEqual(
+            ORIGIN_TABLE_NAME, columns, equalLabel, target)
+        logging.debug(sql)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
+
 
 DB = Database()
 
@@ -159,3 +217,5 @@ if __name__ == '__main__':
          '[{"httpOnly":false,"maxAge":-1,"name":"Authorization","secure":false,"value":"efWLb4U4xgrna2om","version":0}]', '郭x阳', '123.119.45.229', '22514', '192.168.177.191'),
     ]
     # DB.insertOrigin(values)
+    print(DB.queryOriginWithRange(
+        ['name'], 'time', '1624497240', '1624497241'))
