@@ -7,11 +7,11 @@
 '''
 
 import datetime
-from typing import Tuple
+from typing import List
 from utils.str_utils import isIPAddress
 
 
-def extractLogEntry(s: str) -> Tuple:
+def extractLogEntry(s: str) -> List:
     """
     extractLogEntry 将单条日志转化为 符合 ORIGIN_TABLE_LABLES 的元组
 
@@ -22,7 +22,7 @@ def extractLogEntry(s: str) -> Tuple:
         s (str): 输入日志文本行
 
     Returns:
-        Tuple: 返回元组
+        List: 返回列表
     """
     content = s.split()
     try:
@@ -60,7 +60,7 @@ def extractLogEntry(s: str) -> Tuple:
         parameterName = emptyString if parameterName == emptyList else parameterName
         parameterValue = emptyString if parameterValue == emptyList else parameterValue
 
-        return (
+        return [
             time,
             threadID,
             institutionID,
@@ -76,7 +76,7 @@ def extractLogEntry(s: str) -> Tuple:
             ip,
             port,
             vpnip
-        )
+        ]
     except Exception as e:
         raise Exception("failed because to %s" % str(e))
 

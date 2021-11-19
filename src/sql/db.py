@@ -5,12 +5,13 @@
 @Contact :   929160190@qq.com
 '''
 from datetime import datetime
+import logging
 from typing import List, Tuple
 
 import mysql.connector
 
-# origin 表的表头
 ORIGIN_TABLE_LABELS = [
+    # origin 表的表头
     "time",
     "threadID",
     "institutionID",
@@ -25,16 +26,22 @@ ORIGIN_TABLE_LABELS = [
     "name",
     "ip",
     "port",
-    "vpnIP"
+    "vpnIP",
+    "urlEntry"
 ]
 
-ORIGIN_TABLE_NAMES = [
-    "origin",
-    "origin_2020_head",
-    "origin_2020_tail",
-    "origin_2021_head",
-    "origin_2021_tail"
+URL_ENTRY_TABLE_LABELS = [
+    # urlEntry 表的表头
+    "module",
+    "method",
+    "urlEntry",
 ]
+
+ORIGIN_TABLE_NAME = "origin"
+# origin 表的表名
+
+URL_ENTRY_TABLE_NAME = "urlEntry"
+# urlEntry 表的表名
 
 
 class Database():
@@ -87,6 +94,7 @@ class Database():
         if len(values) == 0:
             return
         sql = self.__generateInsertSQL(table, columns)
+        logging.debug(sql)
         self.__cursor.executemany(sql, values)
         self.__conn.commit()
 
@@ -150,4 +158,4 @@ if __name__ == '__main__':
         (1629089285.177, '8616', '17311', '17311-101520', '/fa/commoncore/assetCommonCore/remoteGetCurrenUserInfo', 'GET', '200', '', '', '',
          '[{"httpOnly":false,"maxAge":-1,"name":"Authorization","secure":false,"value":"efWLb4U4xgrna2om","version":0}]', '郭x阳', '123.119.45.229', '22514', '192.168.177.191'),
     ]
-    DB.insertOrigin(values)
+    # DB.insertOrigin(values)
