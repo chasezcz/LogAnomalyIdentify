@@ -6,6 +6,7 @@
 '''
 
 
+import json
 # here put the import lib
 import os
 from typing import List
@@ -81,3 +82,36 @@ def getSuffixName(filename: str) -> str:
         return name
     except Exception:
         return ""
+
+
+def getContent(filename: str) -> List[str]:
+    """
+    getContent 获取文件的内容
+
+    Args:
+        filename (str): 文件名
+
+    Returns:
+        List[str]: [description]
+    """
+    try:
+        with open(filename, 'r') as f:
+            return f.readlines()
+    except Exception:
+        return []
+
+
+def writeDict(filename: str, data):
+    """
+    writeDict 将dict 格式的data 数据文件进行保存到本地
+
+    Args:
+        filename (str): 保存的本地文件名
+        data ([type]): 欲保存的数据
+    """
+    with open(filename, 'w') as f:
+        f.write(json.dumps(data, indent=4))
+
+
+if __name__ == '__main__':
+    writeDict('aa.json', {"123123": 1, "fjiwe": 3})

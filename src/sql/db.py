@@ -207,6 +207,18 @@ class Database():
         self.__cursor.execute(sql)
         return self.__cursor.fetchall()
 
+    def queryUrlEntrys(self) -> List:
+        """
+        queryUrlEntrys 获取所有的urlEntry
+
+        Returns:
+            List: results 
+        """
+        sql = "SELECT id, method, urlEntry FROM urlEntry"
+        logging.debug(sql)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
+
 
 DB = Database()
 

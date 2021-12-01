@@ -7,15 +7,16 @@
 
 
 import logging as log
+import random
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 
-
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
+from utils.file_utils import getContent, writeDict
 from utils.logger_utils import logInit
 
 
@@ -71,13 +72,95 @@ def getLogsFromDBByUserID(userID: str, columns: List[str] = []) -> pd.DataFrame:
     log.debug("获取日志字段 %s, 要求 userID 为 %s " % (','.join(columns),  userID))
 
     originLogs = db.queryOriginWithEqual(columns, equalLabel, userID)
+    log.debug("获取到数据%d条，columns为%s" % (len(originLogs), ','.join(columns)))
     df = pd.DataFrame(originLogs, columns=columns)
     log.debug(df)
     return df
 
 
+def deeplogDfTransfer(df, event_id_map):
+    df = df[['date', 'event']]
+    df['EventId'] = df['event'].apply(
+        lambda e: event_id_map[e] if event_id_map.get(e) else -1)
+    deeplog_df = df.set_index('date').resample(
+        '5min').apply(lambda array: list(array)).reset_index()
+    return deeplog_df
+
+
+def trainDataFileGenerator(filename: str, df: pd.DataFrame):
+    """
+    trainDataFileGenerator 生成训练数据文件
+
+    Args:
+        filename (str): 训练数据的对应文件名
+        df (pd.DataFrame): 数据
+    """
+    with open(filename, 'a') as f:
+        for event_id_list in df['EventId']:
+            if (len(event_id_list) == 0):
+                continue
+            for event_id in event_id_list:
+                f.write(str(event_id) + ' ')
+            f.write('\n')
+
+
+def getEventMap():
+    """
+    getEventMap 获取所有的Event, method:urlEntry
+    """
+    data = db.queryUrlEntrys()
+    eventMap = dict()
+    for line in data:
+        eventMap[line[1]+':'+line[2]] = line[0]
+    return eventMap
+
+
+def generateDataset(userNum: int, threshold: int):
+    usersListPath = 'data/users.txt'
+    columns = [
+        'time', 'urlEntry', 'method'
+    ]
+    ths = "%dmin" % threshold
+    trainFilePath = 'data/train_%d_%d' % (userNum, threshold)
+
+    eventMap = dict()
+    users = getContent(usersListPath)
+    if userNum > len(users):
+        userNum = len(users)
+    targetUsers = random.sample(users, userNum)
+
+    for id, user in enumerate(targetUsers):
+        user = user.strip()
+        log.debug("开始处理用户%s, %d/%d" % (user, id, len(targetUsers)))
+        df = getLogsFromDBByUserID(user, columns)
+        log.debug("共获取到%d条数据" % len(df))
+
+        df['date'] = df['time'].apply(
+            lambda timestamp: datetime.fromtimestamp(timestamp))
+        df['event'] = df['method'] + ':' + df['urlEntry']
+        df = df[['date', 'event']]
+
+        # update event map
+        for event in df['event']:
+            if event in eventMap:
+                continue
+            eventMap[event] = len(eventMap)
+
+        df['EventId'] = df['event'].apply(
+            lambda e: eventMap[e] if eventMap.get(e) else -1)
+        deeplogDf = df.set_index('date').resample(
+            ths).apply(lambda array: list(array)).reset_index()
+        trainDataFileGenerator(trainFilePath, deeplogDf)
+        log.info("%s 保存完毕" % user)
+    writeDict('data/eventMap.json', eventMap)
+
+
 if __name__ == '__main__':
     logInit(__file__, log.DEBUG)
-    df = pd.read_pickle('data/173211-9739.pkl')
-    df = pd.DataFrame(df)
-    print(df.at(1, 'headers'))
+    # df = pd.read_pickle('data/173211-9739.pkl')
+    # df = pd.DataFrame(df)
+
+    # print(df.at(1, 'headers'))
+    # res = getEventMap()
+    # print(res)
+    generateDataset(30, 30)
