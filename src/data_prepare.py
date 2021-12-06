@@ -85,7 +85,7 @@ def getLogsFromDBByUserID(userID: str, columns: List[str] = []) -> pd.DataFrame:
 def deeplogDfTransfer(df, event_id_map):
     df = df[['date', 'event']]
     df['EventId'] = df['event'].apply(
-        lambda e: event_id_map[e] if event_id_map.get(e) else -1)
+        lambda e: event_id_map[e] if event_id_map.get(e) else 0)
     deeplog_df = df.set_index('date').resample(
         '5min').apply(lambda array: list(array)).reset_index()
     return deeplog_df
@@ -132,7 +132,7 @@ def generateDataset(userNum: int, threshold: int):
         'time', 'urlEntry', 'method'
     ]
 
-    eventMap = dict()
+    eventMap = {'demo': 0}
     users = getContent(usersListPath)
     ths = "%dmin" % threshold
 
@@ -143,39 +143,41 @@ def generateDataset(userNum: int, threshold: int):
     if not path.exists(basePath):
         # create
         os.makedirs(basePath)
+    df = pd.DataFrame()
 
     for id, user in enumerate(users):
         log.debug("开始处理用户%s, %d/%d" % (user, id, userNum))
-        df = getLogsFromDBByUserID(user, columns)
-        log.debug("共获取到%d条数据" % len(df))
+        tdf = getLogsFromDBByUserID(user, columns)
+        log.debug("共获取到%d条数据" % len(tdf))
 
-        df['date'] = df['time'].apply(
+        tdf['date'] = tdf['time'].apply(
             lambda timestamp: datetime.fromtimestamp(timestamp))
-        df['event'] = df['method'] + ':' + df['urlEntry']
-        df = df[['date', 'event']]
-
+        tdf['event'] = tdf['method'] + ':' + tdf['urlEntry']
+        tdf = tdf[['date', 'event']]
         # update event map
-        for event in df['event']:
-            if event in eventMap:
-                continue
-            eventMap[event] = len(eventMap)
+        # eventMap = {event: id for id, event in enumerate(
+        #     df['event'].value_counts().keys())}
+        for event in tdf['event']:
+            if event not in eventMap:
+                eventMap[event] = len(eventMap)
 
-        df['EventId'] = df['event'].apply(
-            lambda e: eventMap[e] if eventMap.get(e) else -1)
-        deeplogDf = df.set_index('date').resample(
-            ths).apply(lambda array: list(array)).reset_index()
+        tdf['EventId'] = tdf['event'].apply(lambda e: eventMap[e])
+        deeplogDf = tdf.set_index('date').resample(ths).apply(
+            lambda array: list(array)).reset_index()
+        df = pd.concat([df, deeplogDf], ignore_index=True)
 
-        if id < userNum * 0.5:
-            filePath = basePath + '/train'
-        elif id < userNum * 0.7:
-            filePath = basePath + '/validation'
-        else:
-            filePath = basePath + '/test'
+    writeDict(basePath + '/eventMap.json', eventMap)
 
-        trainDataFileGenerator(filePath, deeplogDf)
-        log.info("%s 保存完毕" % user)
+    df = df.sample(frac=1).reset_index(drop=True)
+    print(df)
+    trainDataFileGenerator(basePath+'/train',
+                           df.iloc[:int(len(df) * 0.5), ])
+    trainDataFileGenerator(basePath+'/validation',
+                           df.iloc[int(len(df) * 0.5): int(len(df) * 0.7), ])
+    trainDataFileGenerator(basePath+'/test',
+                           df.iloc[int(len(df) * 0.7):, ])
 
-    writeDict('data/eventMap.json', eventMap)
+    log.info("%s 保存完毕" % user)
 
 
 if __name__ == '__main__':
