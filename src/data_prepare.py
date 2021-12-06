@@ -6,14 +6,18 @@
 '''
 
 
+import argparse
 import logging as log
+import os
 import random
 from datetime import datetime
-from typing import Dict, List
+from os import path
+from typing import List
 
 import numpy as np
 import pandas as pd
 
+from modules.lstm import train
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
 from utils.file_utils import getContent, writeDict
@@ -43,7 +47,7 @@ def getLogsFromDBByDate(columns: List[str] = [], startDate: str = "1996-01-01", 
 
     originLogs = db.queryOriginWithRange(columns, rangeLabel, start, end)
     df = pd.DataFrame(originLogs, columns=columns)
-    log.debug(df)
+    # log.debug(df)
     return df
 
 
@@ -74,7 +78,7 @@ def getLogsFromDBByUserID(userID: str, columns: List[str] = []) -> pd.DataFrame:
     originLogs = db.queryOriginWithEqual(columns, equalLabel, userID)
     log.debug("获取到数据%d条，columns为%s" % (len(originLogs), ','.join(columns)))
     df = pd.DataFrame(originLogs, columns=columns)
-    log.debug(df)
+    # log.debug(df)
     return df
 
 
@@ -116,22 +120,32 @@ def getEventMap():
 
 
 def generateDataset(userNum: int, threshold: int):
+    """
+    generateDataset 生成数据集，包括 训练集，验证集以及测试集
+
+    Args:
+        userNum (int): 用户数据集的用户数量
+        threshold (int): 时间窗口的阈值
+    """
     usersListPath = 'data/users.txt'
     columns = [
         'time', 'urlEntry', 'method'
     ]
-    ths = "%dmin" % threshold
-    trainFilePath = 'data/train_%d_%d' % (userNum, threshold)
 
     eventMap = dict()
     users = getContent(usersListPath)
-    if userNum > len(users):
-        userNum = len(users)
-    targetUsers = random.sample(users, userNum)
+    ths = "%dmin" % threshold
 
-    for id, user in enumerate(targetUsers):
-        user = user.strip()
-        log.debug("开始处理用户%s, %d/%d" % (user, id, len(targetUsers)))
+    userNum = len(users) if userNum > len(users) else userNum
+    users = random.sample(users, userNum)
+    # train : Validation : test = 5 : 2 : 3
+    basePath = 'data/%d_%d' % (userNum, threshold)
+    if not path.exists(basePath):
+        # create
+        os.makedirs(basePath)
+
+    for id, user in enumerate(users):
+        log.debug("开始处理用户%s, %d/%d" % (user, id, userNum))
         df = getLogsFromDBByUserID(user, columns)
         log.debug("共获取到%d条数据" % len(df))
 
@@ -150,8 +164,17 @@ def generateDataset(userNum: int, threshold: int):
             lambda e: eventMap[e] if eventMap.get(e) else -1)
         deeplogDf = df.set_index('date').resample(
             ths).apply(lambda array: list(array)).reset_index()
-        trainDataFileGenerator(trainFilePath, deeplogDf)
+
+        if id < userNum * 0.5:
+            filePath = basePath + '/train'
+        elif id < userNum * 0.7:
+            filePath = basePath + '/validation'
+        else:
+            filePath = basePath + '/test'
+
+        trainDataFileGenerator(filePath, deeplogDf)
         log.info("%s 保存完毕" % user)
+
     writeDict('data/eventMap.json', eventMap)
 
 
@@ -163,4 +186,12 @@ if __name__ == '__main__':
     # print(df.at(1, 'headers'))
     # res = getEventMap()
     # print(res)
-    generateDataset(30, 30)
+    parser = argparse.ArgumentParser()
+
+    # Data and model checkpoints directories
+    parser.add_argument('--userNum', type=int, default=10, metavar='N',
+                        help='用于制作数据集的用户数量 (default: 10)')
+    parser.add_argument('--threshold', type=int, default=30, metavar='N',
+                        help='时间窗口阈值，一个时间窗口内的日志会判断为同一个session (default: 30)')
+
+    generateDataset(parser.parse_args().userNum, parser.parse_args().threshold)

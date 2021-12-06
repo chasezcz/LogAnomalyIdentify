@@ -7,7 +7,7 @@
 
 
 import json
-# here put the import lib
+import logging as log
 import os
 from typing import List
 
@@ -96,8 +96,9 @@ def getContent(filename: str) -> List[str]:
     """
     try:
         with open(filename, 'r') as f:
-            return f.readlines()
-    except Exception:
+            return [line.strip() for line in f.readlines()]
+    except Exception as e:
+        log.debug(e)
         return []
 
 
@@ -114,4 +115,5 @@ def writeDict(filename: str, data):
 
 
 if __name__ == '__main__':
-    writeDict('aa.json', {"123123": 1, "fjiwe": 3})
+    # writeDict('aa.json', {"123123": 1, "fjiwe": 3})
+    print(getContent('./data/users.txt'))
