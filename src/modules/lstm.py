@@ -9,6 +9,7 @@ import argparse
 import json
 import logging as log
 import os
+import random
 from pathlib import WindowsPath
 
 import torch
@@ -82,6 +83,7 @@ def train(args):
     if use_cuda:
         log.info('Use CUDA')
         torch.cuda.manual_seed(args.seed)
+    log.info(device)
     # 获取训练数据
     log.info("Get train data loader")
     trainDataset = generate(name='%s/train' % args.data_dir,
@@ -110,6 +112,7 @@ def train(args):
 
     for epoch in range(1, args.epochs + 1):
         # 迭代训练
+        log.debug("Start train epoch %d" % epoch)
         model.train()
         trainLoss = 0
         for seq, label in trainDataLoader:
@@ -123,65 +126,50 @@ def train(args):
             optimizer.step()
             # 计算交叉熵loss
             trainLoss += loss.item()
-        # log.debug('Epoch [{}/{}], Train_loss: {}'.format(
-        #     epoch, args.epochs, round(trainLoss / len(trainDataLoader.dataset),
-        #                               4)))
-        # eval
-        predict_cnt = 0
-        anomaly_cnt = 0
-        for id, line in enumerate(validationDataset):
-            for i in range(len(line) - args.window_size):
-                seq = line[i:i+args.window_size]
-                label = line[i+args.window_size]
-
-                seq = torch.tensor(seq, dtype=torch.float).view(
-                    -1, args.window_size, args.input_size).to(device)
-
-                label = torch.tensor(label).view(-1).to(device)
-                output = model(seq)
-                predict = torch.argsort(output, 1)[0][-args.num_candidates:]
-                acnt, bcnt = 0, 0
-                if label not in predict:
-                    acnt += 1
-                bcnt += 1
-            if acnt > bcnt * 0.8:
-                anomaly_cnt += 1
-            predict_cnt += 1
-
-        log.debug('Epoch [{}/{}], Train_loss: {}, Acc: {}'.format(
+        log.debug('Epoch [{}/{}], Train_loss: {}'.format(
             epoch, args.epochs,
-            round(trainLoss / len(trainDataLoader.dataset), 4),
-            round(anomaly_cnt / predict_cnt, 4)))
+            round(trainLoss / len(trainDataLoader.dataset), 4)))
 
-        # for i in range(len(line) - window_size):
-        #     seq = line[i:i + window_size]
-        #     label = line[i + window_size]
-        #     seq = torch.tensor(seq,
-        #                        dtype=torch.float).view(-1, window_size,
-        #                                                input_size).to(device)
-        #     label = torch.tensor(label).view(-1).to(device)
-        #     output = model(seq)
-        #     predict = torch.argsort(output, 1)[0][-num_candidates:]
-        #     if label not in predict:
-        #         anomaly_cnt += 1
-        #         predict_list[i + window_size] = 1
-        #     predict_cnt += 1
-        # return {
-        #     'anomaly_cnt': anomaly_cnt,
-        #     'predict_cnt': predict_cnt,
-        #     'predict_list': predict_list
-        # }
+        if epoch % 10 == 0:
+            # eval
+            log.debug("start eval")
+            predict_cnt = 0
+            nomaly_cnt = 0
+            for line in random.sample(validationDataset, 500):
+                cnt = 0
+                for i in range(len(line) - args.window_size):
+                    seq = line[i: i + args.window_size]
+                    label = line[i + args.window_size]
+
+                    seq = torch.tensor(seq, dtype=torch.float).view(
+                        -1, args.window_size, args.input_size).to(device)
+                    label = torch.tensor(label).view(-1).to(device)
+                    output = model(seq)
+                    predict = torch.argsort(output, 1)[
+                        0][-args.num_candidates:]
+
+                    if label in predict:
+                        cnt += 1
+
+                if cnt >= (len(line)-args.window_size) * 0.9:
+                    nomaly_cnt += 1
+                predict_cnt += 1
+
+            log.debug('save model, checkpoint. acc : {}'.format(
+                      (round(nomaly_cnt / predict_cnt, 4))))
+            save_model(model, 'model%d' % epoch, args.model_dir, args)
+            model.cuda()
 
     log.debug('Finished Training')
-    save_model(model, args.model_dir, args)
+    save_model(model, 'model', args.model_dir, args)
 
 
-def save_model(model, model_dir, args):
+def save_model(model, name, model_dir, args):
     log.info("Saving the model.")
-    path = os.path.join(model_dir, 'model.pth')
+    path = os.path.join(model_dir, '%s.pth' % name)
     torch.save(model.cpu().state_dict(), path)
     # Save arguments used to create model for restoring the model later
-    model_info_path = os.path.join(model_dir, 'model_info.pth')
+    model_info_path = os.path.join(model_dir, '%s_info.pth' % name)
     with open(model_info_path, 'wb') as f:
         model_info = {
             'input_size': args.input_size,
@@ -243,7 +231,7 @@ def predict_fn(input_data, model_info):
     log.debug(window_size)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    log.info('Current device: {}'.format(device))
+    log.debug('Current device: {}'.format(device))
 
     predict_cnt = 0
     anomaly_cnt = 0
