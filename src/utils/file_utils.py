@@ -114,6 +114,11 @@ def writeDict(filename: str, data):
         f.write(json.dumps(data, indent=4))
 
 
+def mkdir(dir: str):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+
 if __name__ == '__main__':
     # writeDict('aa.json', {"123123": 1, "fjiwe": 3})
     print(getContent('./data/users.txt'))

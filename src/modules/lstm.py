@@ -10,12 +10,13 @@ import json
 import logging as log
 import os
 import random
-from pathlib import WindowsPath
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
 
 class Model(nn.Module):
@@ -110,7 +111,10 @@ def train(args):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
 
-    for epoch in range(1, args.epochs + 1):
+    losss = []
+    accs = []
+
+    for epoch in tqdm(range(1, args.epochs + 1)):
         # 迭代训练
         log.debug("Start train epoch %d" % epoch)
         model.train()
@@ -129,14 +133,17 @@ def train(args):
         log.debug('Epoch [{}/{}], Train_loss: {}'.format(
             epoch, args.epochs,
             round(trainLoss / len(trainDataLoader.dataset), 4)))
+        losss.append(trainLoss / len(trainDataLoader.dataset))
 
         if epoch % 10 == 0:
             # eval
             log.debug("start eval")
             predict_cnt = 0
             nomaly_cnt = 0
-            for line in random.sample(validationDataset, 500):
+            # for line in random.sample(validationDataset, 500):
+            for line in validationDataset:
                 cnt = 0
+                acnt = 0
                 for i in range(len(line) - args.window_size):
                     seq = line[i: i + args.window_size]
                     label = line[i + args.window_size]
@@ -148,28 +155,42 @@ def train(args):
                     predict = torch.argsort(output, 1)[
                         0][-args.num_candidates:]
 
-                    if label in predict:
+                    if label not in predict:
                         cnt += 1
-
-                if cnt >= (len(line)-args.window_size) * 0.9:
+                    acnt += 1
+                if cnt <= 3 or cnt <= acnt * 0.1:
                     nomaly_cnt += 1
                 predict_cnt += 1
 
             log.debug('save model, checkpoint. acc : {}'.format(
                       (round(nomaly_cnt / predict_cnt, 4))))
-            save_model(model, 'model%d' % epoch, args.model_dir, args)
+            accs.append(nomaly_cnt / predict_cnt)
+            save_model(model, args.model_dir + ('/%d' % epoch), args)
             model.cuda()
 
     log.debug('Finished Training')
-    save_model(model, 'model', args.model_dir, args)
+    save_model(model, args.model_dir, args)
+
+    # 绘图
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)
+    ax1.plot(range(1, len(losss) + 1), losss)
+    ax2.plot(range(1, len(accs) + 1), accs)
+    plt.savefig(args.model_dir+'/res.png', dpi=400, bbox_inches='tight')
 
 
-def save_model(model, name, model_dir, args):
+def save_model(model, model_dir, args):
     log.info("Saving the model.")
-    path = os.path.join(model_dir, '%s.pth' % name)
+
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    path = os.path.join(model_dir, 'model.pth')
     torch.save(model.cpu().state_dict(), path)
     # Save arguments used to create model for restoring the model later
-    model_info_path = os.path.join(model_dir, '%s_info.pth' % name)
+    model_info_path = os.path.join(model_dir, 'model_info.pth')
+
     with open(model_info_path, 'wb') as f:
         model_info = {
             'input_size': args.input_size,
