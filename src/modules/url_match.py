@@ -52,9 +52,9 @@ class UrlMatcher(object):
             for entry in self.entrys[module][method][length]:
                 if entry.isMatch(url):
                     return entry.url
-        except Exception:
+        except Exception as e:
+            logging.debug(e)
             return url
-        return url
 
 
 if __name__ == '__main__':
