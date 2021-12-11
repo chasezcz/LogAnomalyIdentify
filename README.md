@@ -23,7 +23,7 @@ log parser
 ## 3. 模型设计
 
 训练：
-`python src/train.py --num-class 3984 --num-candidates 398 --epochs 200 --window-size 5 --num-gpus 1 --hidden-size 128 --num-layers 4 --data_dir=./data/200_30 --model-dir=./model/200_5_128_4`
+`python src/train.py --num-class 3984 --num-candidates 398 --epochs 200 --window-size 5 --num-gpus 1 --hidden-size 128 --num-layers 4 --batch-size 128 --data_dir=./data/200_30 --model-dir=./model/200_5_128_4`
 
 测试：
 `python src/predict.py --data_dir=./data/200_30 --model-dir=./model`

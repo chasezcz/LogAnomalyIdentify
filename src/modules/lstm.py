@@ -94,10 +94,16 @@ def train(args):
 
     # 获取验证集数据
     validationDataset = []
+    dic = set()
     with open('%s/validation' % args.data_dir, 'r') as f:
         for line in f.readlines():
-            line = list(map(lambda n: n - 1, map(int, line.strip().split())))
-            validationDataset.append(line)
+            dic.add(line.strip())
+
+    for line in dic:
+        seq = list(map(lambda n: n - 1, map(int, line.strip().split())))
+        validationDataset.append(seq)
+
+    del dic
 
     log.debug("Processes {}/{} ({:.0f}%) of train data".format(
         len(trainDataLoader.sampler), len(trainDataLoader.dataset),
@@ -114,7 +120,7 @@ def train(args):
     losss = []
     accs = []
 
-    for epoch in tqdm(range(1, args.epochs + 1)):
+    for epoch in range(1, args.epochs + 1):
         # 迭代训练
         log.debug("Start train epoch %d" % epoch)
         model.train()
@@ -132,7 +138,7 @@ def train(args):
             trainLoss += loss.item()
         log.debug('Epoch [{}/{}], Train_loss: {}'.format(
             epoch, args.epochs,
-            round(trainLoss / len(trainDataLoader.dataset), 4)))
+            round(trainLoss / len(trainDataLoader.dataset), 5)))
         losss.append(trainLoss / len(trainDataLoader.dataset))
 
         if epoch % 10 == 0:
@@ -141,7 +147,8 @@ def train(args):
             predict_cnt = 0
             nomaly_cnt = 0
             # for line in random.sample(validationDataset, 500):
-            for line in validationDataset:
+            for i in tqdm(range(len(validationDataset))):
+                line = validationDataset[i]
                 cnt = 0
                 acnt = 0
                 for i in range(len(line) - args.window_size):
@@ -158,12 +165,12 @@ def train(args):
                     if label not in predict:
                         cnt += 1
                     acnt += 1
-                if cnt <= 3 or cnt <= acnt * 0.1:
+                if cnt <= acnt * 0.05:
                     nomaly_cnt += 1
                 predict_cnt += 1
 
-            log.debug('save model, checkpoint. acc : {}'.format(
-                      (round(nomaly_cnt / predict_cnt, 4))))
+            log.debug('save model, checkpoint. nomaly_cnt: {}, predict_cnt: {}, acc : {}'.format(
+                nomaly_cnt, predict_cnt, (round(nomaly_cnt / predict_cnt, 5))))
             accs.append(nomaly_cnt / predict_cnt)
             save_model(model, args.model_dir + ('/%d' % epoch), args)
             model.cuda()
