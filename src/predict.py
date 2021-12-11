@@ -8,9 +8,7 @@
 import argparse
 import json
 import logging as log
-import random
 
-import torch
 from tqdm import tqdm
 
 from modules.lstm import input_fn, model_fn, predict_fn
@@ -21,7 +19,6 @@ def predict(args):
     model_info = model_fn(args.model_dir)
 
     log.debug("start eval")
-    # res = []
 
     predict_cnt = 0
     nomaly_cnt = 0
@@ -39,10 +36,9 @@ def predict(args):
             if response['predict_cnt'] * 0.1 > response['anomaly_cnt']:
                 nomaly_cnt += 1
 
-    # normal_has_anomaly = [1 if t['anomaly_cnt'] > 0.8*t['predict_cnt']]
-
-    log.debug('acc : {}'.format(
-        (round(nomaly_cnt / predict_cnt, 4))))
+    log.debug('nomaly_cnt: {}, predict_cnt: {},  acc : {}'.format(
+        nomaly_cnt, predict_cnt,
+        (round(nomaly_cnt / predict_cnt, 5))))
 
 
 if __name__ == '__main__':

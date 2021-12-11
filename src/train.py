@@ -10,7 +10,7 @@ from utils.logger_utils import logInit
 torch.manual_seed(0)
 
 if __name__ == '__main__':
-    logInit(__file__, log.DEBUG)
+    logInit(__file__, log.DEBUG, isStreaming=True)
     parser = argparse.ArgumentParser()
 
     # Data and model checkpoints directories

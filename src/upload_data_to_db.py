@@ -8,13 +8,14 @@
 import logging as log
 import sys
 from typing import List, Tuple
-from modules import url_entry
 
+from modules import url_entry
 from modules.log_entry import extractLogEntry
 from modules.url_entry import UrlEntry
 from modules.url_match import UrlMatcher
-from sql.db import DB as db, ORIGIN_TABLE_NAME, URL_ENTRY_TABLE_LABELS, URL_ENTRY_TABLE_NAME
-from sql.db import ORIGIN_TABLE_LABELS
+from sql.db import DB as db
+from sql.db import (ORIGIN_TABLE_LABELS, ORIGIN_TABLE_NAME,
+                    URL_ENTRY_TABLE_LABELS, URL_ENTRY_TABLE_NAME)
 from utils.file_utils import getFilesByPath
 from utils.logger_utils import logInit
 
@@ -141,5 +142,5 @@ def uploadOriginLogsToDB():
 
 
 if __name__ == '__main__':
-    logInit(__file__, log.INFO)
+    logInit(__file__, log.INFO, isStreaming=True)
     uploadOriginLogsToDB()

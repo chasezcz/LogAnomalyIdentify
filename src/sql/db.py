@@ -4,8 +4,8 @@
 @Author  :   Chengze Zhang
 @Contact :   929160190@qq.com
 '''
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import List, Tuple
 
 import mysql.connector
@@ -215,6 +215,18 @@ class Database():
             List: results 
         """
         sql = "SELECT id, method, urlEntry FROM urlEntry"
+        logging.debug(sql)
+        self.__cursor.execute(sql)
+        return self.__cursor.fetchall()
+
+    def queryUniqueUrl(self) -> List:
+        """
+        queryUrlEntrys 获取所有的url
+
+        Returns:
+            List: results 
+        """
+        sql = "SELECT DISTINCT url, method FROM origin"
         logging.debug(sql)
         self.__cursor.execute(sql)
         return self.__cursor.fetchall()

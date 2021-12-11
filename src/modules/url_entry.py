@@ -29,9 +29,9 @@ class UrlEntry(object):
         """
         if (len(origin) > 0):
             ss = origin.split()
-            self.module = ss[0]
             self.method = ss[1]
             self.url = '/' + ss[2].strip('/')
+            self.module = ss[2].split('/')[1]
         elif (len(paraSet) == 3):
             self.module = paraSet[0]
             self.method = paraSet[1]
@@ -41,7 +41,7 @@ class UrlEntry(object):
 
         self.length = len(self.url.split("/"))
         pattern = re.sub(r'\{[^/]{1,100}\}',
-                         r'[^/]{2,100}', self.url, count=100)
+                         r'.*', self.url, count=100)
 
         self.pattern = re.compile(pattern)
 
