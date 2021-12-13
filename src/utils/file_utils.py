@@ -102,6 +102,19 @@ def getContent(filename: str) -> List[str]:
         return []
 
 
+def writeList(filename: str, data):
+    """
+    writeList 将列表保存到本地
+
+    Args:
+        filename (str): [description]
+        data ([type]): [description]
+    """
+    with open(filename, 'w') as f:
+        for line in data:
+            f.write(line+'\n')
+
+
 def writeDict(filename: str, data):
     """
     writeDict 将dict 格式的data 数据文件进行保存到本地
@@ -114,11 +127,18 @@ def writeDict(filename: str, data):
         f.write(json.dumps(data, indent=4))
 
 
-def mkdir(dir: str):
+def mkdirIfNotExist(dir: str):
+    """
+    mkdirIfNotExist 检查如果不存在，就创建路径
+
+    Args:
+        dir (str): 目标路径
+    """
     if not os.path.exists(dir):
         os.makedirs(dir)
 
 
 if __name__ == '__main__':
     # writeDict('aa.json', {"123123": 1, "fjiwe": 3})
-    print(getContent('./data/users.txt'))
+    test = ['afwef', 'afeawef']
+    writeList('test', test)

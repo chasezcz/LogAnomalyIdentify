@@ -14,13 +14,11 @@ from datetime import datetime
 from os import path
 from typing import List
 
-import numpy as np
 import pandas as pd
 
-from modules.lstm import train
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
-from utils.file_utils import getContent, writeDict
+from utils.file_utils import getContent, mkdirIfNotExist, writeDict, writeList
 from utils.logger_utils import logInit
 
 
@@ -91,21 +89,36 @@ def deeplogDfTransfer(df, event_id_map):
     return deeplog_df
 
 
-def trainDataFileGenerator(filename: str, df: pd.DataFrame):
+def trainDataFileGenerator(basePath: str, df: pd.DataFrame, trainSize=5, validationSize=2, testSize=3):
     """
-    trainDataFileGenerator 生成训练数据文件
+    trainDataFileGenerator 生成序列数据文件
 
     Args:
-        filename (str): 训练数据的对应文件名
+        basePath (str): 文件存档的基础路径
         df (pd.DataFrame): 数据
+        trainSize (int, optional): 训练集所占比. Defaults to 5.
+        validationSize (int, optional): 验证集所占比. Defaults to 2.
+        testSize (int, optional): 测试集所占比. Defaults to 3.
     """
-    with open(filename, 'a') as f:
-        for event_id_list in df['EventId']:
-            if (len(event_id_list) == 0):
-                continue
-            for event_id in event_id_list:
-                f.write(str(event_id) + ' ')
-            f.write('\n')
+
+    lines = set()
+    for event_id_list in df['EventId']:
+        if (len(event_id_list) <= 5):
+            continue
+        lines.add(' '.join([str(id) for id in event_id_list]))
+    lines = list(lines)
+    mkdirIfNotExist(basePath)
+    all = trainSize + validationSize + testSize
+    length = len(lines)
+    flag1 = int(length * trainSize / all)
+    flag2 = int(length * (trainSize+validationSize) / all)
+    log.info("去重后，共得到序列 {} 条, 训练集 {} 条，验证集 {} 条，测试集 {} 条".format(
+        length, flag1, flag2-flag1, length-flag2))
+
+    writeList(basePath + '/train', lines[:flag1])
+    writeList(basePath + '/validation', lines[flag1:flag2])
+    writeList(basePath + '/test', lines[flag2:])
+    del lines
 
 
 def getEventMap():
@@ -169,19 +182,13 @@ def generateDataset(userNum: int, threshold: int):
     writeDict(basePath + '/eventMap.json', eventMap)
 
     df = df.sample(frac=1).reset_index(drop=True)
-    print(df)
-    trainDataFileGenerator(basePath+'/train',
-                           df.iloc[:int(len(df) * 0.5), ])
-    trainDataFileGenerator(basePath+'/validation',
-                           df.iloc[int(len(df) * 0.5): int(len(df) * 0.7), ])
-    trainDataFileGenerator(basePath+'/test',
-                           df.iloc[int(len(df) * 0.7):, ])
-
+    # print(df)
+    trainDataFileGenerator(basePath, df)
     log.info("%s 保存完毕" % user)
 
 
 if __name__ == '__main__':
-    logInit(__file__, log.DEBUG)
+    logInit(__file__, log.DEBUG, isStreaming=True)
     # df = pd.read_pickle('data/173211-9739.pkl')
     # df = pd.DataFrame(df)
 
