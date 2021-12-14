@@ -102,7 +102,7 @@ def getContent(filename: str) -> List[str]:
         return []
 
 
-def writeList(filename: str, data):
+def writeList(filename: str, data, isContinue: bool = False):
     """
     writeList 将列表保存到本地
 
@@ -110,7 +110,8 @@ def writeList(filename: str, data):
         filename (str): [description]
         data ([type]): [description]
     """
-    with open(filename, 'w') as f:
+    op = 'a' if isContinue else 'w'
+    with open(filename, op) as f:
         for line in data:
             f.write(line+'\n')
 
@@ -127,6 +128,12 @@ def writeDict(filename: str, data):
         f.write(json.dumps(data, indent=4))
 
 
+def jsonLoad(filename: str):
+    with open(filename, 'r') as f:
+        data = json.load(f)
+        return data
+
+
 def mkdirIfNotExist(dir: str):
     """
     mkdirIfNotExist 检查如果不存在，就创建路径
@@ -140,5 +147,7 @@ def mkdirIfNotExist(dir: str):
 
 if __name__ == '__main__':
     # writeDict('aa.json', {"123123": 1, "fjiwe": 3})
-    test = ['afwef', 'afeawef']
-    writeList('test', test)
+    # test = ['afwef', 'afeawef']
+    # writeList('test', test)
+    i = jsonLoad("data/headers.json")
+    print(i)
