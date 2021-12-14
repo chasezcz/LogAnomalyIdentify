@@ -8,6 +8,7 @@
 
 import datetime
 from typing import List
+
 from utils.str_utils import isIPAddress
 
 
@@ -31,15 +32,15 @@ def extractLogEntry(s: str) -> List:
         level = content[2]
         if (level == "ERROR"):
             raise Exception("error level log. continue")
-        threadID = content[7]
-        institutionID = content[8]
-        userID = content[9]
-        url = content[10]
-        method = content[11]
-        statusCode = content[12]
-        parameterType = content[13]
-        parameterName = content[14]
-        parameterValue = content[15]
+        threadID = content[7].strip()
+        institutionID = content[8].strip()
+        userID = content[9].strip()
+        url = content[10].strip().replace(',', '')
+        method = content[11].strip()
+        statusCode = content[12].strip()
+        parameterType = content[13].strip().replace(' ', '').replace('\t', '')
+        parameterName = content[14].strip().replace(' ', '').replace('\t', '')
+        parameterValue = content[15].strip().replace(' ', '').replace('\t', '')
         idx = 16
         while (idx+2 < len(content) and not isIPAddress(content[idx+2])):
             parameterValue += content[idx]
