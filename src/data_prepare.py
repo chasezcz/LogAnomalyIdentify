@@ -7,12 +7,13 @@
 
 
 import argparse
+import collections
 import logging as log
 import os
 import random
 from datetime import datetime
 from os import path
-from typing import List
+from typing import Dict, List
 
 import pandas as pd
 
@@ -157,6 +158,7 @@ def generateDataset(userNum: int, threshold: int):
         # create
         os.makedirs(basePath)
     df = pd.DataFrame()
+    longSeq = []
 
     for id, user in enumerate(users):
         log.debug("开始处理用户%s, %d/%d" % (user, id, userNum))
@@ -174,16 +176,24 @@ def generateDataset(userNum: int, threshold: int):
             if event not in eventMap:
                 eventMap[event] = len(eventMap)
 
-        tdf['EventId'] = tdf['event'].apply(lambda e: eventMap[e])
-        deeplogDf = tdf.set_index('date').resample(ths).apply(
+        tdf['eventId'] = tdf['event'].apply(lambda e: eventMap[e])
+        rdf = tdf.set_index('date').resample(ths).apply(
             lambda array: list(array)).reset_index()
-        df = pd.concat([df, deeplogDf], ignore_index=True)
+        rdf = rdf.dropna(axis=0, subset=['eventId'])
+        df = pd.concat([df, rdf], ignore_index=True)
+        # 制作长序列
+        lseq = []
+        for seq in rdf['eventId']:
+            cnter = collections.Counter(seq)
+            lseq.extend([i for i, _ in cnter.most_common(2)])
+        longSeq = longSeq.append(' '.join(lseq))
 
     writeDict(basePath + '/eventMap.json', eventMap)
 
     df = df.sample(frac=1).reset_index(drop=True)
     # print(df)
     trainDataFileGenerator(basePath, df)
+    writeList(basePath+'/lseq/train', longSeq)
     log.info("%s 保存完毕" % user)
 
 
@@ -202,5 +212,7 @@ if __name__ == '__main__':
                         help='用于制作数据集的用户数量 (default: 10)')
     parser.add_argument('--threshold', type=int, default=30, metavar='N',
                         help='时间窗口阈值，一个时间窗口内的日志会判断为同一个session (default: 30)')
+    parser.add_argument('--asTrain', type=bool, default=True, metavar='N',
+                        help="如果此项为True，则为生成训练模型用的序列数据集，否则为对本地日志格式的读取")
 
     generateDataset(parser.parse_args().userNum, parser.parse_args().threshold)
