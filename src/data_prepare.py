@@ -16,6 +16,7 @@ from os import path
 from typing import Dict, List
 
 import pandas as pd
+from modules.lstm import train
 
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
@@ -102,12 +103,22 @@ def trainDataFileGenerator(basePath: str, df: pd.DataFrame, trainSize=5, validat
         testSize (int, optional): 测试集所占比. Defaults to 3.
     """
 
-    lines = set()
-    for event_id_list in df['EventId']:
-        if (len(event_id_list) <= 5):
+    lines = []
+    dic = set()
+    for id in range(len(df)):
+        data = df.iloc[id, ]
+        if (len(data['eventId']) <= 5):
             continue
-        lines.add(' '.join([str(id) for id in event_id_list]))
-    lines = list(lines)
+        seq = ' '.join([str(i) for i in data['eventId']])
+        if seq not in dic:
+            dic.add(seq)
+
+            lines.append('{} {} {}'.format(
+                data['date'],
+                data['userId'],
+                seq
+            ))
+
     mkdirIfNotExist(basePath)
     all = trainSize + validationSize + testSize
     length = len(lines)
@@ -119,7 +130,9 @@ def trainDataFileGenerator(basePath: str, df: pd.DataFrame, trainSize=5, validat
     writeList(basePath + '/train', lines[:flag1])
     writeList(basePath + '/validation', lines[flag1:flag2])
     writeList(basePath + '/test', lines[flag2:])
+
     del lines
+    del dic
 
 
 def getEventMap():
@@ -133,7 +146,7 @@ def getEventMap():
     return eventMap
 
 
-def generateDataset(userNum: int, threshold: int):
+def generateDataset(userNum: int, threshold: int, dataSample: bool = False):
     """
     generateDataset 生成数据集，包括 训练集，验证集以及测试集
 
@@ -158,7 +171,7 @@ def generateDataset(userNum: int, threshold: int):
         # create
         os.makedirs(basePath)
     df = pd.DataFrame()
-    longSeq = []
+    longSeq = pd.DataFrame()
 
     for id, user in enumerate(users):
         log.debug("开始处理用户%s, %d/%d" % (user, id, userNum))
@@ -180,20 +193,41 @@ def generateDataset(userNum: int, threshold: int):
         rdf = tdf.set_index('date').resample(ths).apply(
             lambda array: list(array)).reset_index()
         rdf = rdf.dropna(axis=0, subset=['eventId'])
+        rdf['userId'] = user
         df = pd.concat([df, rdf], ignore_index=True)
         # 制作长序列
         lseq = []
         for seq in rdf['eventId']:
             cnter = collections.Counter(seq)
-            lseq.extend([i for i, _ in cnter.most_common(2)])
-        longSeq = longSeq.append(' '.join(lseq))
+            lseq.extend([str(i) for i, _ in cnter.most_common(1)])
+        lseqdf = pd.DataFrame({
+            'eventId': [lseq]
+        })
+        lseqdf['userId'] = user
+        lseqdf['date'] = tdf.iloc[0, ]['date']
+        if len(lseq) > 0:
+            longSeq = pd.concat([longSeq, lseqdf], ignore_index=True)
+            #     longSeq.append('{} {} {}'.format(
+            #         tdf.iloc[0, ]['date'], user, ' '.join(lseq)))
 
     writeDict(basePath + '/eventMap.json', eventMap)
 
-    df = df.sample(frac=1).reset_index(drop=True)
-    # print(df)
-    trainDataFileGenerator(basePath, df)
-    writeList(basePath+'/lseq/train', longSeq)
+    if dataSample:
+        df = df.sample(frac=1).reset_index(drop=True)
+
+    trainDataFileGenerator(basePath, df,
+                           trainSize=6,
+                           validationSize=1,
+                           testSize=3)
+
+    lseqPath = basePath+'/lseq'
+    mkdirIfNotExist(lseqPath)
+    trainDataFileGenerator(lseqPath, longSeq,
+                           trainSize=6,
+                           validationSize=3,
+                           testSize=0)
+
+    # writeList(lseqPath+'/train', longSeq)
     log.info("%s 保存完毕" % user)
 
 

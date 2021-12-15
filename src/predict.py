@@ -8,6 +8,7 @@
 import argparse
 import json
 import logging as log
+from datetime import datetime
 
 from tqdm import tqdm
 
@@ -26,15 +27,25 @@ def predict(args):
     with open('%s/test' % args.data_dir, 'r') as f:
         content = f.readlines()
         for i in tqdm(range(len(content))):
-            line = content[i]
-            line = list(map(lambda n: n - 1, map(int, line.strip().split())))
+            ss = content[i].strip().split()
+            starttime = datetime.strptime(' '.join(ss[:2]))
+            userId = ss[2]
+            line = list(map(lambda n: n - 1, map(int, ss[3:])))
             request = json.dumps({'line': line})
             input_data = input_fn(request, 'application/json')
             response = predict_fn(input_data, model_info)
+
             # res.append(response)
             predict_cnt += 1
-            if response['predict_cnt'] * 0.1 > response['anomaly_cnt']:
+            isnormal = True
+            if response['predictCnt'] * 0.1 > response['anomalyCnt']:
                 nomaly_cnt += 1
+                isnormal = False
+            if not isnormal:
+                log.debug("用户: {} 在 {} 存在风险行为，风险序列为 {}".format(
+                    userId,
+                    starttime,
+                    ','.join(['{}:{}'.format(key, value) for key, value in response['predict_list'].items()])))
 
     log.debug('nomaly_cnt: {}, predict_cnt: {},  acc : {}'.format(
         nomaly_cnt, predict_cnt,

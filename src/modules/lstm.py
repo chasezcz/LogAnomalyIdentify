@@ -49,6 +49,7 @@ def generate(name, window_size):
 
     with open(name, 'r') as f:
         line = f.readline()
+        line = ' '.join(line.strip().split()[3:])
         while line:
             line = tuple(
                 map(lambda n: n - 1, map(int, line.strip().split())))
@@ -92,22 +93,20 @@ def train(args):
     trainDataLoader = DataLoader(
         trainDataset, batch_size=args.batch_size, **kwargs)
 
-    # 获取验证集数据
-    validationDataset = []
-    dic = set()
-    with open('%s/validation' % args.data_dir, 'r') as f:
-        for line in f.readlines():
-            dic.add(line.strip())
-
-    for line in dic:
-        seq = list(map(lambda n: n - 1, map(int, line.strip().split())))
-        validationDataset.append(seq)
-
-    del dic
-
     log.debug("Processes {}/{} ({:.0f}%) of train data".format(
         len(trainDataLoader.sampler), len(trainDataLoader.dataset),
         100. * len(trainDataLoader.sampler) / len(trainDataLoader.dataset)))
+
+    # 获取验证集数据
+    validationDataset = []
+
+    with open('%s/validation' % args.data_dir, 'r') as f:
+        for line in f.readlines():
+            line = ' '.join(line.strip().split()[3:])
+            seq = list(map(lambda n: n - 1, map(int, line.strip().split())))
+            validationDataset.append(seq)
+
+    log.debug("Processes {} of validation data".format(len(validationDataset)))
 
     # 获取网络模型并进行部署
     model = Model(args.input_size, args.hidden_size, args.num_layers,
@@ -261,9 +260,11 @@ def predict_fn(input_data, model_info):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log.debug('Current device: {}'.format(device))
 
-    predict_cnt = 0
-    anomaly_cnt = 0
-    predict_list = [0] * len(line)
+    predictCnt = 0
+    anomalyCnt = 0
+    # predict_list = [0] * len(line)
+    # predict_list = []
+    res = {}
     for i in range(len(line) - window_size):
         seq = line[i:i + window_size]
         label = line[i + window_size]
@@ -274,13 +275,15 @@ def predict_fn(input_data, model_info):
         output = model(seq)
         predict = torch.argsort(output, 1)[0][-num_candidates:]
         if label not in predict:
-            anomaly_cnt += 1
-            predict_list[i + window_size] = 1
-        predict_cnt += 1
+            anomalyCnt += 1
+            # predict_list[i + window_size] = 1
+            # predict_list.append(
+            res[' '.join(seq)] = str(label)
+        predictCnt += 1
     return {
-        'anomaly_cnt': anomaly_cnt,
-        'predict_cnt': predict_cnt,
-        'predict_list': predict_list
+        'anomalyCnt': anomalyCnt,
+        'predictCnt': predictCnt,
+        'result': res
     }
 
 
