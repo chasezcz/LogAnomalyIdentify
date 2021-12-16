@@ -16,11 +16,12 @@ from os import path
 from typing import Dict, List
 
 import pandas as pd
-from modules.lstm import train
 
+from modules.lstm import train
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
-from utils.file_utils import getContent, mkdirIfNotExist, writeDict, writeList
+from utils.file_utils import (getContent, jsonLoad, mkdirIfNotExist, writeDict,
+                              writeList)
 from utils.logger_utils import logInit
 
 
@@ -135,18 +136,30 @@ def trainDataFileGenerator(basePath: str, df: pd.DataFrame, trainSize=5, validat
     del dic
 
 
-def getEventMap():
+def getEventMap(localPath: str, fromDB: bool = False):
     """
-    getEventMap 获取所有的Event, method:urlEntry
+    getEventMap 获取EventMap
+
+    Args:
+        localPath (str): [description]
+        fromDB (bool, optional): [description]. Defaults to False.
+
+    Returns:
+        [type]: [description]
     """
-    data = db.queryUrlEntrys()
     eventMap = dict()
-    for line in data:
-        eventMap[line[1]+':'+line[2]] = line[0]
+
+    if fromDB:
+        data = db.queryUrlEntrys()
+        eventMap = dict()
+        for line in data:
+            eventMap[line[1]+':'+line[2]] = line[0]
+    else:
+        eventMap = jsonLoad(localPath)
     return eventMap
 
 
-def generateDataset(userNum: int, threshold: int, dataSample: bool = False):
+def generateDataset(userNum: int, threshold: int, eventMapPath: str = '', dataSample: bool = False):
     """
     generateDataset 生成数据集，包括 训练集，验证集以及测试集
 
@@ -158,8 +171,14 @@ def generateDataset(userNum: int, threshold: int, dataSample: bool = False):
     columns = [
         'time', 'urlEntry', 'method'
     ]
-
-    eventMap = {'demo': 0}
+    updateEventMap = False
+    if len(eventMapPath) == 0:
+        # 未指定
+        eventMap = {'demo': 0}
+        updateEventMap = True
+    else:
+        eventMap = getEventMap(eventMapPath)
+        updateEventMap = False
     users = getContent(usersListPath)
     ths = "%dmin" % threshold
 
@@ -185,11 +204,14 @@ def generateDataset(userNum: int, threshold: int, dataSample: bool = False):
         # update event map
         # eventMap = {event: id for id, event in enumerate(
         #     df['event'].value_counts().keys())}
-        for event in tdf['event']:
-            if event not in eventMap:
-                eventMap[event] = len(eventMap)
+        if updateEventMap:
+            for event in tdf['event']:
+                if event not in eventMap:
+                    eventMap[event] = len(eventMap)
 
-        tdf['eventId'] = tdf['event'].apply(lambda e: eventMap[e])
+        tdf['eventId'] = tdf['event'].apply(
+            lambda e: eventMap[e] if e in eventMap else 0)
+
         rdf = tdf.set_index('date').resample(ths).apply(
             lambda array: list(array)).reset_index()
         rdf = rdf.dropna(axis=0, subset=['eventId'])
@@ -209,8 +231,8 @@ def generateDataset(userNum: int, threshold: int, dataSample: bool = False):
             longSeq = pd.concat([longSeq, lseqdf], ignore_index=True)
             #     longSeq.append('{} {} {}'.format(
             #         tdf.iloc[0, ]['date'], user, ' '.join(lseq)))
-
-    writeDict(basePath + '/eventMap.json', eventMap)
+    if updateEventMap:
+        writeDict(basePath + '/eventMap.json', eventMap)
 
     if dataSample:
         df = df.sample(frac=1).reset_index(drop=True)

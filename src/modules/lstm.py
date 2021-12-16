@@ -49,8 +49,9 @@ def generate(name, window_size):
 
     with open(name, 'r') as f:
         line = f.readline()
-        line = ' '.join(line.strip().split()[3:])
         while line:
+            # log.debug(line)
+            line = ' '.join(line.strip().split()[3:])
             line = tuple(
                 map(lambda n: n - 1, map(int, line.strip().split())))
             for i in range(len(line) - window_size):
