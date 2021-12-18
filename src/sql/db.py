@@ -56,7 +56,8 @@ class Database():
         self.__conn = mysql.connector.connect(user='root',
                                               database='arplogs',
                                               password='Arp@2020',
-                                              host='localhost')
+                                              host='localhost',
+                                              auth_plugin='mysql_native_password')
         self.__cursor = self.__conn.cursor()
 
     def __del__(self):

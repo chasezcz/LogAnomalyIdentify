@@ -52,8 +52,9 @@ class UrlMatcher(object):
             for entry in self.entrys[module][method][length]:
                 if entry.isMatch(url):
                     return entry.url
+            return url
         except Exception as e:
-            logging.debug(e)
+            logging.error(e)
             return url
 
 

@@ -106,7 +106,7 @@ def uploadOriginLogsToDB():
     readLogsAndUploadToDB 读取本地日志文件，并上传到数据库中
     """
     files = getFilesByPath(
-        ORIGIN_LOG_LOCAL_PATH, LOG_FILE_SUFFIX, [], ['api', 'token'])
+        ORIGIN_LOG_LOCAL_PATH, LOG_FILE_SUFFIX, ['icaslog'], ['api', 'token'])
 
     # 生成 urlMatch 用于 url 归一化，如果抛出异常，则自动退出
     matcher = UrlMatcher(downloadUrlEntryFromDB())
