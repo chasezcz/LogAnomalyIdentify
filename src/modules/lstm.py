@@ -236,7 +236,7 @@ def model_fn(model_dir):
 
 
 def input_fn(request_body, request_content_type):
-    log.info('Deserializing the input data.')
+    log.debug('Deserializing the input data.')
     if request_content_type == 'application/json':
         input_data = json.loads(request_body)
         return input_data
@@ -246,14 +246,14 @@ def input_fn(request_body, request_content_type):
 
 
 def predict_fn(input_data, model_info):
-    log.info('Predict next template on this pattern series.')
+    log.debug('Predict next template on this pattern series.')
     line = input_data['line']
     num_candidates = model_info['num_candidates']
     input_size = model_info['input_size']
     window_size = model_info['window_size']
     model = model_info['model']
 
-    log.info(line)
+    log.debug(line)
     log.debug(num_candidates)
     log.debug(input_size)
     log.debug(window_size)
@@ -279,7 +279,7 @@ def predict_fn(input_data, model_info):
             anomalyCnt += 1
             # predict_list[i + window_size] = 1
             # predict_list.append(
-            res[' '.join(seq)] = str(label)
+            res[' '.join([str(t) for t in line[i:i + window_size]])] = str(line[i + window_size])
         predictCnt += 1
     return {
         'anomalyCnt': anomalyCnt,

@@ -28,7 +28,7 @@ def predict(args):
         content = f.readlines()
         for i in tqdm(range(len(content))):
             ss = content[i].strip().split()
-            starttime = datetime.strptime(' '.join(ss[:2]))
+            starttime = datetime.strptime(' '.join(ss[:2]), '%Y-%m-%d %H:%M:%S')
             userId = ss[2]
             line = list(map(lambda n: n - 1, map(int, ss[3:])))
             request = json.dumps({'line': line})
@@ -37,23 +37,21 @@ def predict(args):
 
             # res.append(response)
             predict_cnt += 1
-            isnormal = True
-            if response['predictCnt'] * 0.1 > response['anomalyCnt']:
+            if response['predictCnt'] * 0.1 > response['anomalyCnt'] or len(response['result']) == 0: 
                 nomaly_cnt += 1
-                isnormal = False
-            if not isnormal:
-                log.debug("用户: {} 在 {} 存在风险行为，风险序列为 {}".format(
+            else:
+                log.error("用户: {} 在 {} 存在风险行为，风险序列为: {}".format(
                     userId,
                     starttime,
-                    ','.join(['{}:{}'.format(key, value) for key, value in response['predict_list'].items()])))
+                    ', '.join(['{}:{}'.format(key, value) for key, value in response['result'].items()])))
 
-    log.debug('nomaly_cnt: {}, predict_cnt: {},  acc : {}'.format(
+    log.info('nomaly_cnt: {}, predict_cnt: {},  acc : {}'.format(
         nomaly_cnt, predict_cnt,
         (round(nomaly_cnt / predict_cnt, 5))))
 
 
 if __name__ == '__main__':
-    logInit(__file__, log.DEBUG)
+    logInit(__file__, log.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-dir', type=str, default='./model/',
                         help='the place where to store the model parameter.')
