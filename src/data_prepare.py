@@ -270,5 +270,7 @@ if __name__ == '__main__':
                         help='时间窗口阈值，一个时间窗口内的日志会判断为同一个session (default: 30)')
     parser.add_argument('--asTrain', type=bool, default=True, metavar='N',
                         help="如果此项为True，则为生成训练模型用的序列数据集，否则为对本地日志格式的读取")
-
-    generateDataset(parser.parse_args().userNum, parser.parse_args().threshold)
+    parser.add_argument('--eventMap', type=str, default='', metavar='N',
+                        help='本地eventMap的路径')
+    generateDataset(parser.parse_args().userNum,
+                    parser.parse_args().threshold, parser.parse_args().eventMap)
