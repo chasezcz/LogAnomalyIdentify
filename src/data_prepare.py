@@ -127,9 +127,10 @@ def trainDataFileGenerator(basePath: str, df: pd.DataFrame, trainSize=5, validat
     flag2 = int(length * (trainSize+validationSize) / all)
     log.info("去重后，共得到序列 {} 条, 训练集 {} 条，验证集 {} 条，测试集 {} 条".format(
         length, flag1, flag2-flag1, length-flag2))
-
-    writeList(basePath + '/train', lines[:flag1])
-    writeList(basePath + '/validation', lines[flag1:flag2])
+    if flag1 > 0:
+        writeList(basePath + '/train', lines[:flag1])
+    if flag1 < flag2:
+        writeList(basePath + '/validation', lines[flag1:flag2])
     writeList(basePath + '/test', lines[flag2:])
 
     del lines
@@ -159,7 +160,7 @@ def getEventMap(localPath: str, fromDB: bool = False):
     return eventMap
 
 
-def generateDataset(userNum: int, threshold: int, eventMapPath: str = '', dataSample: bool = False):
+def generateDataset(userNum: int, threshold: int, eventMapPath: str = '', dataSample: bool = False, asTrain: bool = True):
     """
     generateDataset 生成数据集，包括 训练集，验证集以及测试集
 
@@ -237,19 +238,28 @@ def generateDataset(userNum: int, threshold: int, eventMapPath: str = '', dataSa
     if dataSample:
         df = df.sample(frac=1).reset_index(drop=True)
 
-    trainDataFileGenerator(basePath, df,
-                           trainSize=6,
-                           validationSize=1,
-                           testSize=3)
-
     lseqPath = basePath+'/lseq'
     mkdirIfNotExist(lseqPath)
-    trainDataFileGenerator(lseqPath, longSeq,
-                           trainSize=6,
-                           validationSize=3,
-                           testSize=0)
 
-    # writeList(lseqPath+'/train', longSeq)
+    if asTrain:
+        trainDataFileGenerator(basePath, df,
+                               trainSize=6,
+                               validationSize=1,
+                               testSize=3)
+        trainDataFileGenerator(lseqPath, longSeq,
+                               trainSize=6,
+                               validationSize=3,
+                               testSize=0)
+    else:
+        trainDataFileGenerator(basePath, df,
+                               trainSize=0,
+                               validationSize=0,
+                               testSize=1)
+        trainDataFileGenerator(lseqPath, longSeq,
+                               trainSize=0,
+                               validationSize=0,
+                               testSize=1)
+        # writeList(lseqPath+'/train', longSeq)
     log.info("%s 保存完毕" % user)
 
 
@@ -268,9 +278,12 @@ if __name__ == '__main__':
                         help='用于制作数据集的用户数量 (default: 10)')
     parser.add_argument('--threshold', type=int, default=30, metavar='N',
                         help='时间窗口阈值，一个时间窗口内的日志会判断为同一个session (default: 30)')
-    parser.add_argument('--asTrain', type=bool, default=True, metavar='N',
+    parser.add_argument('--asTrain', type=bool, default=False, metavar='N',
                         help="如果此项为True，则为生成训练模型用的序列数据集，否则为对本地日志格式的读取")
     parser.add_argument('--eventMap', type=str, default='', metavar='N',
                         help='本地eventMap的路径')
+    # log.debug(parser.parse_args().asTrain)
+
     generateDataset(parser.parse_args().userNum,
-                    parser.parse_args().threshold, parser.parse_args().eventMap)
+                    parser.parse_args().threshold, parser.parse_args().eventMap,
+                    dataSample=False, asTrain=parser.parse_args().asTrain)
