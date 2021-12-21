@@ -1,5 +1,6 @@
 support/
-data/
+data/input
+data/output
 
 
 # Byte-compiled / optimized / DLL files
@@ -132,6 +133,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 **/nohup.out
-
-# models 
-model/
