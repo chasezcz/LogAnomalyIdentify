@@ -12,7 +12,7 @@ from datetime import datetime
 
 from tqdm import tqdm
 
-from modules.lstm import input_fn, model_fn, predict_fn
+from modules.lstm import input_fn, isAnomal, model_fn, predict_fn
 from utils.logger_utils import logInit
 
 
@@ -28,7 +28,8 @@ def predict(args):
         content = f.readlines()
         for i in tqdm(range(len(content))):
             ss = content[i].strip().split()
-            starttime = datetime.strptime(' '.join(ss[:2]), '%Y-%m-%d %H:%M:%S')
+            starttime = datetime.strptime(
+                ' '.join(ss[:2]), '%Y-%m-%d %H:%M:%S')
             userId = ss[2]
             line = list(map(lambda n: n - 1, map(int, ss[3:])))
             request = json.dumps({'line': line})
@@ -37,7 +38,7 @@ def predict(args):
 
             # res.append(response)
             predict_cnt += 1
-            if response['predictCnt'] * 0.1 > response['anomalyCnt'] or len(response['result']) == 0: 
+            if not isAnomal(response['anomalyCnt'], response['predictCnt']) or len(response['result']) == 0:
                 nomaly_cnt += 1
             else:
                 log.error("用户: {} 在 {} 存在风险行为，风险序列为: {}".format(

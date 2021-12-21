@@ -25,7 +25,7 @@ class Model(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        # 定义网络结构为，LSTTM 后 跟一个 全连接层 full-  layer
+        # 定义网络结构为，LSTTM 后 跟一个 全连接层 full-layer
         self.lstm = nn.LSTM(input_size,
                             hidden_size,
                             num_layers,
@@ -102,10 +102,13 @@ def train(args):
     validationDataset = []
 
     with open('%s/validation' % args.data_dir, 'r') as f:
+        # with open('%s/ltest' % args.data_dir, 'r') as f:
         for line in f.readlines():
             line = ' '.join(line.strip().split()[3:])
             seq = list(map(lambda n: n - 1, map(int, line.strip().split())))
             validationDataset.append(seq)
+    # 为了缩减验证时间，随机抽样进行验证
+    validationDataset = random.sample(validationDataset, 500)
 
     log.debug("Processes {} of validation data".format(len(validationDataset)))
 
@@ -119,6 +122,10 @@ def train(args):
 
     losss = []
     accs = []
+    # evalpoint 为 每到 evalpoint 时，进行验证
+    evalpoint = 2
+    # checkpoint 为 每到 checkpoint 时，进行保存模型
+    checkpoint = 10
 
     for epoch in range(1, args.epochs + 1):
         # 迭代训练
@@ -141,11 +148,11 @@ def train(args):
             round(trainLoss / len(trainDataLoader.dataset), 5)))
         losss.append(trainLoss / len(trainDataLoader.dataset))
 
-        if epoch % 10 == 0:
+        if epoch % evalpoint == 0:
             # eval
             log.debug("start eval")
-            predict_cnt = 0
-            nomaly_cnt = 0
+            predictCnt = 0
+            nomalyCnt = 0
             # for line in random.sample(validationDataset, 500):
             for i in tqdm(range(len(validationDataset))):
                 line = validationDataset[i]
@@ -165,13 +172,16 @@ def train(args):
                     if label not in predict:
                         cnt += 1
                     acnt += 1
-                if cnt <= acnt * 0.05:
-                    nomaly_cnt += 1
-                predict_cnt += 1
 
-            log.debug('save model, checkpoint. nomaly_cnt: {}, predict_cnt: {}, acc : {}'.format(
-                nomaly_cnt, predict_cnt, (round(nomaly_cnt / predict_cnt, 5))))
-            accs.append(nomaly_cnt / predict_cnt)
+                if not isAnomal(cnt, acnt):
+                    nomalyCnt += 1
+                predictCnt += 1
+
+            log.debug('eval point. nomaly_cnt: {}, predict_cnt: {}, acc : {}'.format(
+                nomalyCnt, predictCnt, (round(nomalyCnt / predictCnt, 5))))
+            accs.append(nomalyCnt / predictCnt)
+        if epoch % checkpoint == 0:
+            log.debug("save model, checkpoint: {}".format(epoch))
             save_model(model, args.model_dir + ('/%d' % epoch), args)
             model.cuda()
 
@@ -279,7 +289,8 @@ def predict_fn(input_data, model_info):
             anomalyCnt += 1
             # predict_list[i + window_size] = 1
             # predict_list.append(
-            res[' '.join([str(t) for t in line[i:i + window_size]])] = str(line[i + window_size])
+            res[' '.join([str(t) for t in line[i:i + window_size]])
+                ] = str(line[i + window_size])
         predictCnt += 1
     return {
         'anomalyCnt': anomalyCnt,
@@ -294,6 +305,24 @@ def output_fn(prediction, accept):
         return json.dumps(prediction), accept
     raise ValueError(
         "{} accept type is not supported by this script".format(accept))
+
+
+def isAnomal(anormalCnt: int, predictCnt: int) -> bool:
+    """
+    isAnomal 判断序列是否可能为异常
+
+    Args:
+        anormalCnt (int): 异常数量
+        predictCnt (int): 预测的数量
+
+    Returns:
+        bool: [description]
+    """
+    if anormalCnt < 3:
+        return False
+    if anormalCnt > int(predictCnt*0.1):
+        return True
+    return False
 
 
 if __name__ == '__main__':
