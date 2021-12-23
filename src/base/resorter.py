@@ -6,10 +6,12 @@
 '''
 
 
-from modules.log_entry import extractLogEntry
-from upload_data_to_db import LOG_FILE_SUFFIX, ORIGIN_LOG_LOCAL_PATH
-from utils.file_utils import getFilesByPath, writeList
 import logging as log
+
+from upload_data_to_db import LOG_FILE_SUFFIX
+from utils.file_utils import getFilesByPath, writeList
+
+from base.log_entry import extractLogEntry
 
 
 def resortLogByUserID(inputPath: str, outputPath: str):
