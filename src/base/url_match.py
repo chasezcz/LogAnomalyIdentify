@@ -7,7 +7,7 @@
 
 
 import re
-from modules.url_entry import UrlEntry
+from base.url_entry import UrlEntry
 from typing import List
 import logging
 
