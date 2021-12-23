@@ -13,11 +13,11 @@ import os
 import random
 from datetime import datetime
 from os import path
-from typing import Dict, List
+from typing import List
 
 import pandas as pd
 
-from modules.lstm import train
+from multideep.model import train
 from sql.db import DB as db
 from sql.db import ORIGIN_TABLE_LABELS
 from utils.file_utils import (getContent, jsonLoad, mkdirIfNotExist, writeDict,

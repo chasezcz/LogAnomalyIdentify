@@ -6,13 +6,11 @@
 '''
 
 import logging as log
-import sys
 from typing import List, Tuple
 
-from modules import url_entry
-from modules.log_entry import extractLogEntry
-from modules.url_entry import UrlEntry
-from modules.url_match import UrlMatcher
+from base.log_entry import extractLogEntry
+from base.url_entry import UrlEntry
+from base.url_match import UrlMatcher
 from sql.db import DB as db
 from sql.db import (ORIGIN_TABLE_LABELS, ORIGIN_TABLE_NAME,
                     URL_ENTRY_TABLE_LABELS, URL_ENTRY_TABLE_NAME)

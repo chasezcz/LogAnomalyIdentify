@@ -4,7 +4,7 @@ import os
 
 import torch
 
-from modules.lstm import train
+from multideep.model import train
 from utils.logger_utils import logInit
 
 torch.manual_seed(0)

@@ -12,7 +12,7 @@ from datetime import datetime
 
 from tqdm import tqdm
 
-from modules.lstm import input_fn, isAnomal, model_fn, predict_fn
+from multideep.model import input_fn, isAnomal, model_fn, predict_fn
 from utils.logger_utils import logInit
 
 
